@@ -1,0 +1,50 @@
+---
+output:
+  word_document: default
+---
+title: "education_R_Saldaeva"
+author: "Saldaeva V"
+date: "2024-09-08"
+output:
+  word_document:
+    reference_docx: "education_R_Saldaeva"
+    toc: yes
+    toc_depth: 3
+    toc_title: "Оглавление"
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(readxl)
+library(psych)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(rmarkdown)
+```
+## Работа с пакетами
+
+```{r pressure, echo=FALSE}
+.libPaths() # функция чтобы посмотреть пути к библиотекам
+
+```
+
+```{r Packages}
+#installed.packages() # проверка какие пакеты установлены
+#install.packages("package_name") # установка пакетов с CRAN
+#remove.packages("package_name") # удаление пакетов
+#update.packages("package_name") # обнавление пакетов
+#source("https://bioconductor.org/biocLite.R") 
+#biocLite("package_name") # установка пакетов с Bioconductor
+#devtools::install_github("hadley/dplyr") #  установка пакетов с github
+#library(package_name) # подключениe пакетов к текущему проекту
+#detach(package:dplyr) # отключение пакетов к текущему проекту
+```
+## Чтение данных
+```{r data}
+data <-  read_csv2("C:\\Users\\Алексей\\Desktop\\mag\\statistics\\biostatistics\\data_csv2.csv", skip = 0, n_max = Inf)
+```
+
