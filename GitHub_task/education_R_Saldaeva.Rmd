@@ -48,3 +48,15 @@ library(rmarkdown)
 data <-  read_csv2("C:\\Users\\Алексей\\Desktop\\mag\\statistics\\biostatistics\\data_csv2.csv", skip = 0, n_max = Inf)
 ```
 
+## Базовые статистики
+```{r data}
+# mean(x, trim = 0, na.rm = TRUE)
+# median(x, na.rm = TRUE)
+# min(x, na.rm = FALSE)
+# max(x, na.rm = FALSE)
+# quantile(x, probs = seq(0, 1, 0.25), na.rm = FALSE, names = TRUE, type = 7)
+# var(x, na.rm = TRUE) # дисперсия
+# IQR(x, na.rm = FALSE, type = 7) # межквартильный интервал
+# sum(!is.na(vec)): количество значений без учёта пропущенных;
+# sum(is.na(vec)): количество пропущенных значений.
+```
