@@ -1,0 +1,276 @@
+---
+title: "Вasic_visualization_DZ1"
+author: "Saldaeva V"
+date: "2024-09-21"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, fig.width=16, fig.height=10)
+
+library(tidyverse)
+```
+## Data reading
+
+```{r dataLoading}
+hogwarts <- read_csv("C:/Users/Алексей/Desktop/mag/statistics/biostatistics/визуализация данных/data/hogwarts_2024.csv")
+hogwarts |> head()
+```
+### Checking dataset structure
+
+```{r}
+hogwarts |> glimpse()
+
+# Changing some variables type to factors
+hogwarts <- hogwarts |> mutate(
+  across(c(house, course, sex, wandCore, bloodStatus), ~ as.factor(.x))
+)
+```
+
+### NA checking
+
+```{r}
+sum(is.na(hogwarts))
+```
+
+### Summary output
+
+```{r}
+hogwarts |> summary()
+```
+
+###Bar charts
+## Data visualisation number student/courses 
+
+```{r}
+ggplot(hogwarts) +
+  geom_bar(aes(x = course),
+           fill = "pink1",
+           colour = "blue")+
+  theme_light()+
+  theme(
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 25)
+  )
+```
+
+# number of students by house/bloodStatus.
+
+```{r}
+ggplot(hogwarts) +
+  geom_bar(aes(x = fct_infreq(house), 
+               fill = bloodStatus),
+           position = "fill",
+           colour = "blue")+ 
+  scale_x_discrete(name = "house")+          
+  theme_light()+
+  theme(
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 25)
+  )
+```
+
+## Modification of the dataset
+
+```{r}
+hogwarts_mod <- hogwarts %>%
+  filter(bloodStatus %in% c("pure-blood", "muggle-born"))
+ggplot(hogwarts_mod, aes(x = fct_infreq(house), fill = bloodStatus)) +
+  geom_bar(position = "fill",
+           colour = "black") +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  scale_fill_discrete(name = "Статус крови", labels = c("Чистокровные", "Маглорожденные")) +
+  xlab("Факультет") +
+  ylab("Доля") +
+  theme_light() +
+  theme(
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 25)
+  )
+```
+### Boxplots
+## The distribution of points earned by students in the 3rd week of study, by faculty.
+
+```{r}
+ggplot(hogwarts, aes(x = fct_reorder(house, week_3), y = week_3)) +
+  geom_boxplot() +
+  labs(x = "Факультет", y = "Балл за 3-ю неделю") +
+  theme_light() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 2),
+    axis.title = element_text(size = 25),
+    axis.text = element_text(size = 20)
+  )
+
+```
+
+## Added a display in different colors for the origin of students (bloodStatus). I added a notch to the boxplot.
+
+```{r}
+ggplot(hogwarts, aes(x = fct_reorder(house, week_3), y = week_3, fill = bloodStatus)) +
+  geom_boxplot(notch = FALSE) +
+  labs(x = "Факультет", y = "Балл за 3-ю неделю", fill = "Происхождение") +
+  theme_light() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 14)
+  ) +
+  scale_fill_manual(values = c("half-blood" = "lightblue", "muggle-born" = "pink", "pure-blood" = "green")) +
+  theme(plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(plot.height = 14, plot.width = 14) +
+theme(
+    axis.text.x = element_text(angle = 0, hjust = 1),
+    axis.title = element_text(size = 25),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 25)
+  )  
+```
+## I added a jitter raft to the chart. Removed the outlier display from the boxplot.
+
+```{r}
+ggplot(hogwarts, aes(x = fct_reorder(house, week_3), y = week_3, fill = bloodStatus)) +
+  geom_boxplot(notch = FALSE, outlier.shape = NA, linewidth = 1.0, width = 0.6) +
+  geom_jitter(shape = 20, size = 1.5, position = position_jitter(width = 0.1, height = 5)) +
+  labs(x = "Факультет", y = "Балл за 3-ю неделю", fill = "Происхождение", title = "Успеваемость студентов Хогвартса", subtitle = "Распределение баллов за 3-ю неделю по факультетам и происхождению") +
+  theme_light() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1, size = 20),
+    axis.title = element_text(size = 25),
+    axis.text = element_text(size = 20),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 25),
+    plot.title = element_text(size = 30, face = "bold"),
+    plot.subtitle = element_text(size = 20)
+  ) +
+  scale_fill_manual(values = c("half-blood" = "lightblue", "muggle-born" = "pink", "pure-blood" = "green")) +
+  theme(plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(plot.height = 14, plot.width = 14)
+```
+
+### Various
+## 1
+
+```{r}
+hogwarts %>% 
+  filter(course == 5) %>%
+  mutate(id = as.factor(id)) %>%
+  ggplot() +
+  geom_segment(aes(x = fct_reorder(id, result, .desc = TRUE), xend = id, y = 0, yend = result)) +
+  geom_point(aes(x = id, y = result, color = wandCore), size = 5) +
+  scale_color_manual(values = c("dragon heartstring" = "#C50000", "phoenix feather" = "#FFFF00", "unicorn hair" = "#999999")) +
+  labs(x = "id", y = "Итоговый балл", title = "Леденцовый график успеваемости 5 курса") +
+  scale_x_discrete(name = "ID") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0,5, hjust = 0),
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 25),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 25),
+    plot.title = element_text(size = 25)
+  )
+
+```
+
+## 2
+```{r}
+ggplot(hogwarts, aes(x = `Astronomy exam`, fill = factor(house))) +
+  geom_histogram(binwidth = 5, color = "black") +
+  scale_fill_manual(values = c("Gryffindor" = "#999999", "Hufflepuff" = "#999999", "Ravenclaw" = "#999999", "Slytherin" = "#006400")) +
+  labs(x = "Astronomy Exam Score", y = "Number of students", fill = "House") +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 18),
+    axis.title.x = element_text(size = 22),
+    axis.title.y = element_text(size = 20),
+    legend.text = element_text(size = 18),
+    legend.title = element_text(size = 20)
+  )
+```
+
+### 3
+```{r}
+theme_custom <- function() {
+  theme(
+    panel.background = element_rect(fill = "white"),
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 25)
+  )
+}
+
+```
+
+```{r}
+ggplot(hogwarts, aes(x = fct_infreq(house), fill = bloodStatus)) +
+  geom_bar(position = "fill", colour = "blue") +
+  scale_x_discrete(name = "house") +
+  theme_light()
+
+# Применим новую кастомную тему
+ggplot(hogwarts, aes(x = fct_infreq(house), fill = bloodStatus)) +
+  geom_bar(position = "fill", colour = "blue") +
+  scale_x_discrete(name = "house") +
+  theme_custom()
+
+```
+
+
+### Faceting
+## 1
+Напишите, какой, по вашему мнению, способ фасетирования (по строкам
+или по столбцам) лучше использовать для визуализации гистограммы.
+Фасетирование по столбцам для гистограмм удобнее для восприятия, т.к читается привычным способом слева направо, поэтому визуальная информация считывается быстрее.
+А какой для визуализации violin-plot?
+На мой взгляд, фасетирование по столбцам для violin-plot более удобно, по причине удобства восприятия информации справа налево и хорошо воспринимается демонстрация сравнений между несколькими категориями,а также можно использовать цветовые палитры(как и в гистограммах).
+
+
+## 2
+
+```{r}
+ggplot(hogwarts, aes(x = `Flying exam`)) +
+  geom_histogram(bins = 12, color = "black", fill = "#CCFFFF") +
+  facet_wrap(~ course, ncol = 4) +
+  labs(x = "Flying Exam Score", y = "Count") +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    strip.text = element_text(size = 12)
+  )
+```
+
+```{r}
+hogwarts_clean <- hogwarts %>% 
+  filter(!is.na(`Defence against the dark arts exam`), !is.na(`Herbology exam`))
+
+# Создаем график
+ggplot(hogwarts_clean) +
+  geom_density(aes(x = `Defence against the dark arts exam`, fill = "Defence against the dark arts exam"), alpha = 0.5) +
+  geom_density(aes(x = `Herbology exam`, fill = "Herbology exam"), alpha = 0.5) +
+  scale_fill_manual(values = c("Defence against the dark arts exam" = "blue", "Herbology exam" = "green")) +
+  facet_wrap(~ sex) + # фасетирование по полу
+  labs(title = "Распределение плотности вероятности по экзаменам",
+       x = "Оценка",
+       y = "Плотность вероятности",
+       fill = "Экзамены") +
+  theme_custom()
+```
+
+
+
