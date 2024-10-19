@@ -1,0 +1,606 @@
+---
+title: "Basic_visualization_DZ2"
+author: "Saldaeva V"
+date: "2024-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, fig.width=16, fig.height=10)
+
+library(tidyverse)
+library(ggpubr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(forcats)
+library(gridExtra)
+
+```
+
+
+# Загрузка данных
+```{r }
+
+hogwarts <- read_csv("/Users/Алексей/Desktop/mag/statistics/biostatistics/Basic_visualization/визуализация данных/data/hogwarts_2024.csv")
+hogwarts |> head()
+
+```
+
+## Проверка структуры данных
+
+```{r }
+hogwarts |> glimpse()
+
+# Changing some variables type to factors
+hogwarts <- hogwarts |> mutate(
+  across(c(house, course, sex, wandCore, bloodStatus), ~ as.factor(.x))
+)
+
+```
+```{r}
+theme_custom <- theme(
+    panel.background = element_rect(fill = "white"),
+    plot.title = element_text(size = 27, hjust = 0.3),
+    plot.subtitle = element_text(size = 25, hjust = 0.5),
+    strip.text = element_text(size = 20),
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    legend.title = element_text(size = 25),
+    legend.text = element_text(size = 20)
+  )
+
+# А еще мы создаем функцию для стандартной ошибки среднего
+se <- function(x){
+  sd(x, na.rm=TRUE)/sqrt(length(x))
+}
+se <- function(x){
+  sd(x, na.rm=TRUE)/sqrt(length(x))
+}
+
+```
+
+
+
+#Диаграммы рассеяния (скаттерплоты)
+## Задание №1
+```{r fig.height=16, fig.width=16}
+
+ hogwarts |> 
+  ggplot() + 
+  geom_point(aes(x = `result`,
+                 y = `Herbology exam`),
+             size = 4,
+             shape = 21,
+             colour = "blue",
+             fill = "lightgreen",
+             stroke = 1.5) + #толщина контура
+  geom_smooth(aes(x = `result`, 
+                  y = `Herbology exam`), 
+              se = FALSE, 
+              method = "lm", 
+              colour = "red") + 
+  theme_custom +
+  labs(x = "Суммарный балл студентов", 
+       y = "Оценка за экзамен по травологии", 
+       title = "Точечный график зависимости между суммарным баллом и экзаменом по травологии") + theme_custom
+  
+
+```
+Интерпретация: сушествует прямая зависимость между суммарным баллом студента за год и оценкой за экзамен по травологии. Чем выше суммарный балл, тем выше оценка за экзамен по травологии.
+
+
+## Задание №2 
+### Первый вариант (извините, за разные варианты, задание немного не поняла и хотелось потренироваться). Верный, скорее всего 4 вариант, но не уверенна.
+```{r fig.height=16, fig.width=18}
+
+ hogwarts |> 
+  ggplot() + 
+  geom_point(aes(x = `result`,
+                 y = `Potions exam`), #Экзамен по зельеваренью
+             size = 4,
+             shape = 21,
+             colour = "blue",
+             fill = "lightgreen",
+             stroke = 1.5) + #толщина контура
+  geom_smooth(aes(x = `result`, 
+                  y = `Potions exam`), 
+              se = FALSE, 
+              method = "lm", 
+              colour = "red") + 
+  geom_point(aes(x = `result`,
+                 y = `Divinations exam`),#прорицания
+             size = 3,
+             shape = 21,
+             colour = "black",
+             fill = "yellow",
+             stroke = 1.5) + #толщина контура
+  geom_smooth(aes(x = `result`, 
+                  y = `Divinations exam`), 
+              se = FALSE, 
+              method = "lm", 
+              colour = "black") + 
+  geom_point(aes(x = `result`,
+                 y = `Muggle studies exam`), # экзамен по магловедению
+             size = 2,
+             shape = 16,
+             colour = "#FF0099",
+             stroke = 1.5) + #толщина контура
+  geom_smooth(aes(x = `result`, 
+                  y = `Muggle studies exam`),
+              se = FALSE, 
+              method = "lm", 
+              colour = "#0000CC") +
+  
+  theme_custom +
+  labs(x = "Суммарный балл студентов", 
+       y = "Оценка за экзамен", 
+       title = "Точечный график зависимости между суммарным баллом и оценками за экзамены") + theme_custom
+  
+
+```
+
+
+
+```{r fig.height=16, fig.width=16}
+hogwarts %>%
+  mutate(course = as.factor(course))
+
+
+```
+
+
+
+### Второй вариант
+```{r fig.height=16, fig.width=20}
+
+long_hogwarts <- hogwarts %>%
+  select(result, `Herbology exam`, `Muggle studies exam`, `Divinations exam`, `Potions exam`, house) %>%
+  pivot_longer(cols = c(`Herbology exam`, `Muggle studies exam`, `Divinations exam`, `Potions exam`), 
+               names_to = "exam", values_to = "score")
+
+scatterPlots <- long_hogwarts |> 
+  ggplot(aes(x = result, y = score, fill = house)) + 
+  geom_point(size = 5, shape = 21, stroke = 1.5, colour = "black") + 
+  geom_smooth(se = FALSE, method = "lm", colour = "red") + 
+  scale_fill_manual(values = c("Gryffindor" = "#C50000", 
+                                "Hufflepuff" = "#ECB939", 
+                                "Ravenclaw" = "#41A6D9", 
+                                "Slytherin" = "#1F5D25")) +
+  theme_custom +
+  labs(x = "Суммарный балл студентов", 
+       y = "Оценка за экзамен", 
+       title = "Точечные графики зависимости между суммарным баллом и оценками за экзамены") +
+  theme(plot.title = element_text(size = 35)) + 
+  facet_wrap(~ exam)
+
+scatterPlots
+
+
+
+
+```
+
+
+
+
+### Третий вариант 
+```{r fig.height=8, fig.width=20}
+
+hogwarts_long <- hogwarts %>%
+  pivot_longer(cols = c(`Muggle studies exam`, `Divinations exam`, `Potions exam`), 
+               names_to = "exam", 
+               values_to = "score")
+
+hogwarts_long |> 
+  ggplot() +
+  geom_point(aes(x = result,
+                 y = score,
+                 shape = house,
+                 colour = house),
+             size = 5) +
+  geom_smooth(aes(x = result, y = score, colour = house), 
+              se = FALSE, 
+              method = "lm", 
+              colour = "red") +
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                                 "Hufflepuff" = "#ECB939", 
+                                 "Ravenclaw" = "#41A6D9", 
+                                 "Slytherin" = "#1F5D25")) +
+  scale_shape_manual(values = c(Gryffindor = 49, Hufflepuff = 50, Ravenclaw = 51, Slytherin = 52)) +
+  
+  labs(x = "Суммарный балл студентов", 
+       y = "Оценка за экзамен", 
+       title = "Графики зависимости между суммарным баллом и экзаменом") +
+  theme(plot.title = element_text(size = 30),
+        legend.title = element_text(size = 25),
+        legend.text = element_text(size = 20),
+        strip.text = element_text(size = 20),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 25)) + 
+  facet_wrap(~ exam)
+```
+
+### Четвертый вариант (самый большой)
+```{r}
+scatterShapeCourse_1 <- hogwarts |> 
+  mutate(course = as.factor(course)) |> 
+  ggplot()+
+  geom_point(aes(x = `result`, 
+                 y = `Muggle studies exam`, 
+                 shape = house, 
+                 colour = house), 
+             size = 5)+
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                                 "Hufflepuff" = "#ECB939", 
+                                 "Ravenclaw" = "#41A6D9", 
+                                 "Slytherin" = "#1F5D25")) +
+  scale_shape_manual(values = rep(20, 4))+
+  scale_y_continuous(position = "left")+
+  theme_custom
+scatterShapeCourse_1+
+  geom_smooth(aes(x = `result`,
+                  y = `Muggle studies exam`,
+                  colour = house,
+                  linetype = house),
+              se = FALSE,
+              method = "lm")
+
+
+```
+
+
+```{r}
+scatterShapeCourse_2 <- hogwarts |> 
+  ggplot()+
+  geom_point(aes(x = `result`, 
+                 y = `Divinations exam`, 
+                 shape = house, 
+                 colour = house), 
+             size = 5)+
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                                 "Hufflepuff" = "#ECB939", 
+                                 "Ravenclaw" = "#41A6D9", 
+                                 "Slytherin" = "#1F5D25")) +
+  scale_shape_manual(values = rep(20, 4))+
+  scale_y_continuous(position = "left")+
+  theme_custom
+scatterShapeCourse_2+
+  geom_smooth(aes(x = `result`,
+                  y = `Divinations exam`,
+                  colour = house,
+                  linetype = house),
+              se = FALSE,
+              method = "lm")
+
+
+```
+
+
+
+
+```{r}
+scatterShapeCourse_3 <- hogwarts |> 
+  ggplot()+
+  geom_point(aes(x = `result`, 
+                 y = `Potions exam`, 
+                 shape = house, 
+                 colour = house), 
+             size = 5)+
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                                 "Hufflepuff" = "#ECB939", 
+                                 "Ravenclaw" = "#41A6D9", 
+                                 "Slytherin" = "#1F5D25")) +
+  scale_shape_manual(values = rep(20, 4))+
+  scale_y_continuous(position = "left")+
+  theme_custom
+scatterShapeCourse_3+
+  geom_smooth(aes(x = `result`,
+                  y = `Potions exam`,
+                  colour = house,
+                  linetype = house),
+              se = FALSE,
+              method = "lm")
+
+
+
+```
+
+```{r}
+scatterShapeCourse_4 <- hogwarts |> 
+  ggplot()+
+  geom_point(aes(x = `result`, 
+                 y = `Herbology exam`, 
+                 shape = house, 
+                 colour = house), 
+             size = 5)+
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                                 "Hufflepuff" = "#ECB939", 
+                                 "Ravenclaw" = "#41A6D9", 
+                                 "Slytherin" = "#1F5D25")) +
+  scale_shape_manual(values = rep(20, 4))+
+  scale_y_continuous(position = "left")+
+  theme_custom
+scatterShapeCourse_4+
+  geom_smooth(aes(x = `result`,
+                  y = `Herbology exam`,
+                  colour = house,
+                  linetype = house),
+              se = FALSE,
+              method = "lm")
+
+
+
+
+```
+
+
+
+```{r fig.height=20, fig.width=20}
+ggarrange(plotlist = list(scatterShapeCourse_1, scatterShapeCourse_2, scatterShapeCourse_3, scatterShapeCourse_4),
+          nrow = 4, 
+          heights = c(1,2))
+
+
+```
+
+Задание 3. Видоизмените график, полученный на предыдущем шаге. Сгруппируйте и покрасьте линии тренда в соответствии с одной из категориальных переменных (с такой, которая подсвечивает одно из наблюдений на предыдущем этапе, относящееся ко всем 4-м экзаменам). Постарайтесь избежать коллизий в легенде, при этом сохранив и цветовую палитру для раскраски точек по факультетам.
+
+К сожалению, я не очень поняла второе задание, поэтому наделала много графиком, в надежде, что какой-то окажется правильным. Третье задание вытекает из второго. Я не понимаю, что нужно сделать.
+
+
+
+#geom_col и вещи вокруг него 
+## Задание №1
+
+```{r}
+
+hogwarts_long <- hogwarts %>%
+  pivot_longer(cols = starts_with("week_"), 
+               names_to = "week", 
+               values_to = "points") 
+
+bloodStatusResult <- hogwarts_long |> 
+  filter(week %in% paste0("week_", 1:17)) |>  
+  group_by(bloodStatus) |> 
+  summarise(totalPoints = sum(points, na.rm = TRUE))
+
+ggplot(bloodStatusResult) +
+  geom_col(aes(x = bloodStatus, 
+               y = totalPoints, 
+               fill = bloodStatus)) + 
+  scale_fill_manual(values = c("half-blood" = "#C50000", 
+                                "muggle-born" = "#ECB939", 
+                                "pure-blood" = "#41A6D9")) +
+  labs(x = "Тип крови", 
+       y = "Общая оценка", 
+       title = "Распределение набранных баллов студентов по типу крови (1-17 недели)") +
+  theme_custom
+
+
+
+```
+Гипотеза: я не смотрела этот фильм, поэтому могу только предположить:1. у полукровок самая большая общая оценка за 17 недель потому что их бОльшее количество, чем всех остальных студентов. 2. Или возможно они обладают какими-то талантами, но они не так выражены как у чистокровок, поэтому полукровки стараются больше в учебе (так сказать, пытаются компенсировать свою нечистокровность). Маглорожденные - менее талантливы или неволшебные (как-то так, наверное), поэтому в школу волшебников попадает очень мало студентов и они не могут конкурировать в таланте и учебе с другими студентами. Чистокровки - это что-то типа "золотой молодежи" или "мажеров" их немного и они не стараются учиться, у них и так "жизнь удалась", они решают совершенно другие проблемы, им не до учебы.
+
+
+## Задание №2
+```{r}
+# Подготовка данных
+hogwarts_long <- hogwarts %>%
+  pivot_longer(cols = starts_with("week_"), 
+               names_to = "week", 
+               values_to = "points") 
+
+bloodStatusResult <- hogwarts_long |> 
+  filter(week %in% paste0("week_", 1:17)) |>  
+  group_by(bloodStatus) |> 
+  summarise(totalPoints = sum(points, na.rm = TRUE), .groups = "drop") |> # 
+  arrange(desc(totalPoints)) 
+
+# График
+ggplot(bloodStatusResult) +
+  geom_col(aes(x = bloodStatus, 
+               y = totalPoints, 
+               fill = bloodStatus)) + 
+  scale_fill_manual(values = c("half-blood" = "#C50000", 
+                                "muggle-born" = "#ECB939", 
+                                "pure-blood" = "#41A6D9")) +
+  labs(x = "Тип крови", 
+       y = "Общая сумма набранных баллов", # Обновлено название оси
+       title = "Распределение набранных баллов студентов по типу крови (1-17 недели)") +
+  geom_label(aes(x = bloodStatus, y = totalPoints, label = totalPoints), 
+             position = position_stack(vjust = 0.5), # Центрирование меток по высоте столбиков
+             color = "white", 
+             size = 5, 
+             fill = "black", 
+             alpha = 0.7) + 
+  theme_custom
+
+
+```
+
+Соотносится ли интерпретация с вашей гипотезой из пункта 1?
+Частично - Да(о количестве студентов).
+
+
+
+
+
+## Задание №3
+
+```{r fig.height=20, fig.width=20}
+
+hogwarts_long <- hogwarts %>%
+  pivot_longer(cols = starts_with("week_"), 
+               names_to = "week", 
+               values_to = "points") 
+
+bloodStatusResult <- hogwarts_long |> 
+  filter(week %in% paste0("week_", 1:17)) |>  
+  group_by(bloodStatus, sex) |> 
+  summarise(totalPoints = sum(points, na.rm = TRUE))
+
+
+houseResult <- hogwarts |> 
+  group_by(house, bloodStatus) |> 
+  summarise(houseTotalPoints = sum(result)) |> 
+  mutate(`house and bloodStatus` = paste0(house, " & ", bloodStatus))
+
+house_wand_result_plot <- ggplot(houseResult)+
+  geom_col(aes(y = fct_reorder(`house and bloodStatus`, houseTotalPoints, .desc = FALSE), 
+               x = houseTotalPoints,
+               fill = house))+
+  labs(title = "Распределение очков факультета\nв зависимости от факультета и происхождение",
+       subtitle = "Учебный год 2023/2024",
+       caption = "Данные предоставлены Институтом биоинформатики",
+       x = "Очки",
+       y = "Факультет и происхождение",
+       fill = "Факультет")+
+  scale_fill_manual(labels = c("Gryffindor" = "Гриффиндор", 
+                             "Hufflepuff" = "Пуффендуй", 
+                             "Ravenclaw" = "Когтевран", 
+                             "Slytherin" = "Слизерин"),
+                    values = c("Gryffindor" = "#C50000", 
+                             "Hufflepuff" = "#ECB939", 
+                             "Ravenclaw" = "#41A6D9", 
+                             "Slytherin" = "#1F5D25")
+                    )+
+  scale_x_continuous(breaks = seq(0,12000,1000))+
+  theme_custom
+
+house_wand_result_plot
+
+# Сохраним график
+ggsave("houseAndWandSumPoints.png", house_wand_result_plot, width = 20, height = 16, dpi = 300, units = "in")
+
+```
+Соотносится ли интерпретация с вашей гипотезой из пункта 1?
+Частично - Да(о количестве студентов).
+
+
+## Задание №4
+Изучите функцию coord_flip() . Как вы думаете, когда она может быть полезна? Как вы думаете, в чем ее плюсы и минусы?
+Функция coord_flip() в ggplot2 используется для поворота координат т.е. она меняет местами оси x и y. Бывает полезна, если нужно быстро перевернуть график. Но, как я поняла, строить дальнейший код с функцией coord_flip() не рекомендуется. т.к. эта функция только внешне приебразует график (не меняет оси в действительности), и это нужно держать в голове, иначе можно запутаться в своем коде и далее не правильно.
+
+#Разное 
+## Задание #1
+
+```{r}
+
+data_long <- hogwarts %>%
+  select(`Herbology exam`, `Study of ancient runes exam`) %>%
+  pivot_longer(cols = everything(), names_to = "exam", values_to = "score")
+
+
+pie_data <- data_long %>%
+  group_by(exam) %>%
+  summarise(total_score = sum(score))
+
+pie_chart <- ggplot(pie_data, aes(x = "", y = total_score, fill = exam)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +
+  labs(title = "Распределение баллов за экзамены") +
+  theme_void()
+
+
+point_chart <- ggplot(data_long, aes(x = exam, y = score, color = exam)) +
+  geom_point(position = position_jitter(width = 0.1)) +
+  labs(title = "Точки баллов за экзамены") +
+  theme_minimal()
+
+
+bar_chart <- ggplot(data_long, aes(x = exam, y = score, fill = exam)) +
+  geom_bar(stat = "summary", fun = "mean") +
+  labs(title = "Средние баллы за экзамены") +
+  theme_minimal()
+
+# все графики
+grid.arrange(pie_chart, point_chart, bar_chart, nrow = 2, ncol = 2,
+             layout_matrix = rbind(c(1, 2), c(3, NA)))
+
+```
+
+##Задание №2
+```{r fig.height=20, fig.width=20}
+
+hogwarts$bloodStatus <- recode(hogwarts$bloodStatus,
+                                `muggle-born` = "Маглорожденные",
+                                `pure-blood` = "Чистокровные",
+                                `half-blood` = "Полукровки")
+
+average_scores <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_score = mean(`Potions exam`, na.rm = TRUE))
+
+
+average_scores$bloodStatus <- factor(average_scores$bloodStatus, 
+                                      levels = c("Маглорожденные", "Чистокровные", "Полукровки"))
+
+
+p1 <- ggplot(average_scores, aes(x = bloodStatus, y = mean_score, fill = bloodStatus)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Средний балл по Potions exam",
+       x = "Происхождение",
+       y = "Средний балл") +
+  scale_fill_manual(values = c("Маглорожденные" = "#C50000", 
+                                "Чистокровные" = "#ECB939", 
+                                "Полукровки" = "#41A6D9")) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 25))
+
+p2 <- ggplot(hogwarts, aes(x = `Potions exam`, fill = bloodStatus)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Распределение результатов по Potions exam",
+       x = "Баллы",
+       y = "Плотность") +
+  scale_fill_manual(values = c("Маглорожденные" = "#C50000", 
+                                "Чистокровные" = "#ECB939", 
+                                "Полукровки" = "#41A6D9")) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 25))
+ggarrange(p1, p2, ncol = 1, nrow = 2)
+
+
+```
+
+
+
+
+#Воспроизведение графика 
+```{r fig.height=15, fig.width=15}
+
+hogwarts$house <- recode(hogwarts$house,
+                         Gryffindor = "Гриффиндор",
+                         Hufflepuff = "Пуффендуй",
+                         Ravenclaw = "Когтевран",
+                         Slytherin = "Слизерин")
+
+
+colors <- c("Гриффиндор" = "#C50000", 
+            "Пуффендуй" = "#ECB939", 
+            "Когтевран" = "#41A6D9", 
+            "Слизерин" = "#1F5D25")
+
+
+ggplot(hogwarts, aes(x = sex, y = result, fill = house)) +
+  geom_violin(trim = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  
+  scale_fill_manual(values = colors) +
+  labs(title = "Баллы студентов Хогвардса",
+       subtitle = "Распределение числа баллов у студентов различных факультетов Хогвардса в 2023-2024 учебном году",
+       x = "Пол",
+       y = "Количество очков") +
+  scale_y_continuous(limits = c(-300, 300)) +  # Установка пределов для оси Y
+  theme_minimal() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+        plot.subtitle = element_text(size = 20, hjust = 0.5),
+        legend.title = element_text(size = 25),
+        legend.text = element_text(size = 20),
+        axis.text = element_text(size = 20),
+        axis.title = element_text(size = 25))  
+```
+
