@@ -1,0 +1,146 @@
+---
+title: "ADSL coding"
+author: "Alisa Selezneva"
+date: "2024-10-12"
+output: html_document
+---
+
+<style type="text/css">
+body{
+  font-family: Helvetica;
+  font-size: 12pt;
+}
+/* Headers */
+h1, h2{
+  font-size: 16pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(openxlsx)
+library(lubridate)
+```
+
+Первым делом подгрузим все нужные нам файлы:
+
+
+- MH_MEDICALHISTORY.xlsx,
+
+- ADSL.xlsx
+
+```{r upload}
+
+
+
+mh_ds <- read.xlsx("./SDTM/MH_MEDICALHISTORY.xlsx")
+
+ADSL_ds <- read.xlsx("./SDTM/ADSL.xlsx")
+```
+
+
+
+- STUDYID;
+
+- USUBJID;
+
+- TRTP;
+
+- TRTPN;
+
+
+```{r dm}
+ad_ds <- 
+  ADSL_ds %>% 
+  select(STUDYID, USUBJID, SUBJID, TRTP, TRTPN) %>% 
+  mutate(STUDYID = as.character(STUDYID), 
+         USUBJID = as.character(USUBJID),
+         SUBJID = as.character(SUBJID),
+         TRTP = as.character(TRTP),
+         TRTPN = c(1,2)[match(TRTP, c("XXXX0", "XXXX1"))])
+```
+
+Согласно спецификации, у нас есть ряд важных дат или связанных с ними значений:
+
+- MHSTDTC;
+
+- ASTDT;
+
+- ASTDTF;
+
+- MHENDTC;
+
+- AENDT;
+
+- AENDTF;
+
+
+
+```{r ds_dates}
+dates_ds <- 
+  mh_ds %>% 
+  select(SUBJID, MHSEQ, MHENTPT) %>% 
+  mutate(MHENTPT = format(as.Date(MHENTPT, 
+                                  format = "%Y-%m-%d"), 
+                          "%d.%m.%Y")) %>% 
+  pivot_wider(names_from = MHSEQ, 
+              values_from = MHENTPT) %>%
+  select(SUBJID, MHSTDTC = '1', MHENDTC = '2', AENDT = '3')
+```
+
+ MHSTDTC, AENDT, ASTDT:
+
+```{r trt_dates}
+trt_dates <- mh_ds %>% 
+  group_by(SUBJID) %>% 
+  mutate(N = length(MHSEQ[MHTERM == 'Yes' & 
+                            !is.na(MHTERM)]),
+         L = last(MHSEQ[MHTERM == 'Yes' & 
+                          !is.na(MHTERM)])) %>% 
+  ungroup() %>% 
+  mutate(TYPE = ifelse(MHSEQ == 1, 'ASTDT',
+                       ifelse(MHSEQ == L, 'AENDT', '')),
+         MHSTDTC = format(as.Date(MHSTDTC, 
+                                  format = "%Y-%m-%d"), 
+                          "%d.%m.%Y")) %>% 
+  filter(TYPE != '') %>% 
+  select(SUBJID, MHSTDTC, TYPE) %>% 
+  spread(TYPE, MHSTDTC)
+
+trt_dates <- left_join(trt_dates, dates_ds) 
+
+trt_dates <- trt_dates %>% 
+  mutate(TRTDURD = as.numeric(as.Date(AENDT,
+                           format = "%d.%m.%Y") - as.Date(ASTDT,
+                                                          format = "%d.%m.%Y")))
+
+
+```
+ ??????
+```{r do_dc_reas}
+doreas <- 
+  mh_ds %>% 
+  filter(MHCAT == 'Medical History') %>% 
+  select(MHCAT)
+
+
+```
+
+
+Сджойним нужные нам датафреймы:
+
+```{r joins}
+OCCDS <- ad_ds
+OCCDS <- left_join(OCCDS, dates_ds)
+OCCDS <- left_join(OCCDS, trt_dates)
+
+
+```
+
+
+```{r}
+write.xlsx(OCCDS, "./ADaM-like/OCCDS.xlsx")
+```
+
