@@ -1,0 +1,379 @@
+---
+title: "Untitled"
+author: "Saldaeva V"
+date: "2024-12-23"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+
+
+# Загрузка пакетов
+
+```{r }
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(tidyr)
+library(ggpubr)
+library(factoextra)
+library(FactoMineR)
+library(ggbiplot) # devtools::install_github("vqv/ggbiplot")
+library(rstatix)
+library(reshape2)
+library(corrplot)
+library(corrr)
+library(ggfortify) 
+library(pheatmap)
+library(plotly)
+theme_set(theme_minimal())
+```
+
+# Загрузка данных
+
+```{r pressure, echo=FALSE}
+
+data <- read_rds("C:/Users/Алексей/Desktop/mag/statistics/biostatistics/продвинутая визуализация/very_low_birthweight.rds")
+
+```
+
+# 1. Сделайте копию датасета, в которой удалите колонки с количеством пропусков больше 100, а затем удалите все строки с пропусками
+```{r}
+
+data_copy <- data #копия датасета
+data_copy <- data_copy[, colSums(is.na(data_copy)) <= 100] # удалила колонки с пропусками больше 100
+data_cleaned <- na.omit(data_copy) # удалила все строки с пропусками
+
+
+```
+
+
+
+```{r}
+summary(data_cleaned)
+glimpse(data_cleaned)
+```
+
+# описательные статистики
+```{r}
+skimr::skim(data_cleaned)
+```
+
+# 2.	Постройте графики плотности распределения для числовых переменных. Удалите выбросы, если таковые имеются. Преобразуйте категориальные переменные в факторы. 
+
+```{r}
+
+# определяю числовые переменные
+numeric_vars <- sapply(data_cleaned, is.numeric)  
+numeric_data <- data_cleaned[, numeric_vars]       # Выбираю только числовые переменные
+
+# графики плотности для каждой числовой переменной
+
+for (var in names(numeric_data)) {
+  p <- ggplot(data_cleaned, aes_string(x = var)) +
+    geom_density(fill = "blue", alpha = 0.5) +
+    labs(title = paste("Плотность распределения для", var)) +
+    theme_minimal()
+  
+  print(p)
+}
+
+# Удаляю выбросы
+remove_outliers <- function(x) {
+  q1 <- quantile(x, 0.25, na.rm = TRUE)
+  q3 <- quantile(x, 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  # заполняю выбросы NA
+  x[!(x >= (q1 - 1.5 * iqr) & x <= (q3 + 1.5 * iqr))] <- NA
+  return(x)
+}
+
+cleaned_numeric_data <- numeric_data %>%
+  mutate(across(everything(), remove_outliers))
+
+# Объединяю очищенные числовые данные с остальными данными
+data_cleaned_no_outliers <- data_cleaned %>%
+  select(-one_of(names(numeric_data))) %>%      
+  bind_cols(cleaned_numeric_data)  
+
+# Преобразую категориальные переменные в факторы
+data_cleaned_no_outliers <- data_cleaned_no_outliers %>%
+  mutate(across(c("race", "inout", "delivery", "sex"), as.factor)) 
+
+
+```
+
+```{r}
+glimpse(data_cleaned_no_outliers)
+```
+
+
+
+# Для любых двух числовых переменных раскрасьте график по переменной ‘inout’.
+```{r}
+# График плотности для переменной bwt, раскрашенный по inout
+ggplot(data_cleaned_no_outliers, aes(x = bwt, fill = inout)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Плотность распределения для BWT (вес при рождении в граммах)", 
+       x = "BWT (вес при рождении в граммах)", 
+       fill = "Категория inout") +
+  facet_wrap(~inout, nrow = 1)
+  theme_minimal()
+
+# График плотности для переменной pltct, раскрашенный по inout
+ggplot(data_cleaned_no_outliers, aes(x = pltct, fill = inout)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Плотность распределения для PLTCT (количество тромбоцитов)", 
+       x = "PLTCT (количество тромбоцитов)", 
+       fill = "Категория inout") +
+  facet_wrap(~inout, nrow = 1)
+  theme_minimal()
+```
+
+
+
+# 3.	Проведите тест на сравнение значений колонки ‘lowph’ между группами в переменной inout. Вид статистического теста определите самостоятельно. Визуализируйте результат через библиотеку 'rstatix'. Как бы вы интерпретировали результат, если бы знали, что более низкое значение lowph ассоциировано с более низкой выживаемостью?
+
+```{r}
+
+# t-теста
+t_test_result <- data_cleaned_no_outliers %>%
+  t_test(lowph ~ inout)
+print(t_test_result)
+
+# Визуализация результатов
+ggplot(data_cleaned_no_outliers, aes(x = inout, y = lowph)) +
+  geom_boxplot(fill = "blue", outlier.colour = "red") +
+  labs(title = "Сравнение уровней lowph (самый низкий уровень рН в первые 4 дня жизни) между группами inout",
+       x = "Группа",
+       y = "Уровень lowph (самый низкий уровень рН в первые 4 дня жизни)") +
+  theme_minimal()
+
+# Статист результаты на графике
+stat.test <- data_cleaned_no_outliers %>%
+  t_test(lowph ~ inout) %>%
+  add_significance()
+
+# с добавлением p-значений
+ggboxplot(data_cleaned_no_outliers, x = "inout", y = "lowph", width = 0.8) +
+  stat_pvalue_manual(stat.test, label = "p.signif", y.position = c(max(data_cleaned_no_outliers$lowph) + 0.5)) +
+  labs(title = "Сравнение уровней lowph (самый низкий уровень рН в первые 4 дня жизни) между группами inout")
+
+```
+Значение р = 7.29e-08 говорит о том, что результаты статистически заначимы. Младенцы в группе transported имеют более низкий уровень PH в первые 4 дня жизни, что ассоциировано с более низкой выживаемостью. 
+
+
+
+
+
+# 4.	Сделайте новый датафрейм, в котором оставьте только континуальные или ранговые данные, кроме 'birth', 'year' и 'exit'. Сделайте корреляционный анализ этих данных. Постройте два любых типа графиков для визуализации корреляций.
+```{r}
+# Создаю нового датафрейма с континуальными данными
+data_contin <- data_cleaned_no_outliers %>%
+  select(hospstay, lowph, pltct, bwt, gest) %>% 
+na.omit()
+
+# Выполняю корреляционного анализа (корреляции Пирсона)
+# Визуализируемв corplot
+
+data_contin_cor <- cor(data_contin, use = "complete.obs")
+
+corrplot(data_contin_cor, method = 'number')
+
+
+corrplot(data_contin_cor, method = "color", type = "lower", 
+         addCoef.col = "grey30", diag = FALSE,
+         cl.pos = "b", tl.col = "grey10",
+         col = COL2('RdBu', 10))
+
+
+data_contin_cor %>% 
+  network_plot(min_cor = .0)
+# Матричные графики
+library(GGally)
+ggpairs(data_contin_cor, progress = F)
+
+```
+# Heat map 
+ 
+```{r}
+ # Стандартизирую значения
+data_contin_scaled <- scale(data_contin)
+head(data_contin_scaled)
+
+autoplot(data_contin_scaled)
+
+
+```
+
+# 5.	Постройте иерархическую кластеризацию на этом датафрейме.
+
+```{r}
+
+data_contin_dist <- dist(data_contin_scaled)
+
+hc <- hclust(data_contin_dist, method = "ward.D2")  # Метод Уорда
+
+plot(hc, main = "Дендрограмма иерархической кластеризации", xlab = "", sub = "", cex = .9)
+
+k <- 4
+clusters <- cutree(hc, k)
+
+data_contin$cluster <- as.factor(clusters)
+
+# Визуализация кластеров с помощью графика рассеяния
+ggplot(data_contin, aes(x = lowph, y = hospstay, color = cluster)) +
+  geom_point(size = 3) +
+  labs(title = "Кластеры на графике рассеяния", x = "lowph", y = "hospstay") +
+  theme_minimal()
+```
+
+
+
+
+
+# 6.	Сделайте одновременный график heatmap и иерархической кластеризации. Интерпретируйте результат.
+
+
+```{r}
+
+
+pheatmap(data_contin_scaled, 
+         show_rownames = FALSE, 
+         clustering_distance_rows = data_contin_dist,
+         clustering_method = "ward.D2", 
+         cutree_rows = 4,
+         cutree_cols = length(colnames(data_contin_scaled)),
+         angle_col = 45, 
+         main = "Dendrograms for clustering rows and columns with heatmap")
+
+```
+
+Дендрограммы показывают иерархические отношения между строками и столбцами где высота ветвей отражает степень сходства между кластерами.
+На дендрограмме мозно заметить взаимосвязи между переменными, например, строки с высокими значениями bwt (веса при рождении) и gest (срок беременности)  могут иметь тенденцию к более низким значениям hospstay. Низкий lowph также взаимосвязан с высоким hospstay
+Переменные lowph и pltct очень похожи по паттерну.
+
+
+
+# 7.	Проведите PCA анализ на этих данных. Проинтерпретируйте результат. Нужно ли применять шкалирование для этих данных перед проведением PCA?
+
+
+#Кажется, что шкалирование необходимо, для приведение данных к одному масштабу. это поможет избежать ошибок влияния данных с бOльшим значением. В предыдущих шагах шкалирование уже было проведено data_contin_scaled <- scale(data_contin)
+
+#PCA
+```{r}
+# Выполнение PCA
+pca_result <- prcomp(data_contin_scaled, center = TRUE, scale. = FALSE)
+
+# Сводная информация о PCA
+summary(pca_result)
+
+# Визуализация объясненной дисперсии с помощью ggplot2
+explained_variance <- summary(pca_result)$importance[2, ]  # Извлекаем процент объясненной дисперсии
+
+
+variance_data <- data.frame(
+  PC = paste0("PC", 1:length(explained_variance)),
+  Variance = explained_variance
+)
+
+# Построение графика объясненной дисперсии
+ggplot(variance_data, aes(x = PC, y = Variance)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(title = "Scree Plot", x = "Principal Components", y = "Variance Explained") +
+  theme_minimal()
+
+# Визуализация первых двух главных компонент
+pca_data <- as.data.frame(pca_result$x)
+ggplot(pca_data, aes(x = PC1, y = PC2)) +
+  geom_point() +
+  labs(title = "PCA: Первые две главные компоненты", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+```
+
+
+Первые три главные компоненты (PC1, PC2 и PC3) вместе объясняют около 82.88% дисперсии в данных, что указывает на то, что они содержат значительную информацию о структуре данных.
+Считается, что алгоритм сработал хорошо, когда 70% вариации данных укладывается в 3 компоненты.
+
+
+
+# 8. Постройте biplot график для PCA. Раскрасьте его по значению колонки 'dead'.
+
+
+```{r}
+
+# Присваиваю id каждой строке
+data_cleaned <- data_cleaned %>%
+  mutate(id = row_number())  # Создаем новый столбец 'id' с последовательными числами
+
+# Проверка результата
+print(head(data_cleaned))  # Выводим первые несколько строк для проверки
+
+data_contin <- data_cleaned %>%
+  select(hospstay, lowph, pltct, bwt, gest) %>%  # Выбираем только нужные переменные
+  filter(hospstay != 0 & lowph != 0 & pltct != 0 & bwt != 0 & gest != 0)
+
+# Добавляю колонку 'dead' из data_cleaned
+data_contin <- data_contin %>%
+  mutate(dead = data_cleaned$dead, id = data_cleaned$id)  
+
+head(data_contin)
+```
+
+
+
+
+
+```{r}
+data_contin$dead <- as.factor(data_contin$dead)
+na.omit(data_contin$dead)
+# Выполнение PCA
+pca_result <- prcomp(data_contin[, c("hospstay", "lowph", "pltct", "bwt", "gest")], center = TRUE, scale. = TRUE)
+
+# Создание biplot с ggplot2
+biplot_gg <- autoplot(pca_result, data = data_contin, colour = 'dead', loadings = TRUE, loadings.label = TRUE) +
+  labs(title = "Biplot PCA", x = "PC1", y = "PC2") +
+  scale_color_manual(values = c("blue", "red")) +  # Задаем цвета для классов dead
+  theme_minimal()
+biplot_gg
+
+```
+
+
+
+```{r}
+
+
+
+# Перевод графика в plotly
+plotly_biplot <- ggplotly(biplot_gg, tooltip = c("text", "id"))
+  
+
+# Добавление информации о пациенте в tooltip
+plotly_biplot <- plotly_biplot %>%
+  style(text = data_contin$id)
+
+# Отображение интерактивного графика
+plotly_biplot
+```
+
+Есть некоторое распределение точек по цветам (выжившие и погибшие), но оно не имеет строгого разграничения т.е. это говорит о слабой способности PCA однозначно различать категории dead (0 и 1).
+Переменная dead — это бинарный индикатор (0 или 1), а PCA предназначен для непрерывных переменных. Целью  PCA — уменьшение размерности, а не классификация по признаку
+"нормирование перед работой с PCA делает этот метод затруднительным для работы с бинарными переменными. Для подсчёта матрицы дистанций можно использовать gower distance. А вместо PCA использовать FAMD (Factorial Analysis of Mixed Data), основанный на комбинации PCA для количественных переменных и MCA (Multiple Correspondence Analysis) для категориальных." - цитата из занятия
+
+
+
+
+
+
+
