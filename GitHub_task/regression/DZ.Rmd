@@ -1,0 +1,433 @@
+---
+title: "lm"
+author: "Saldaeva V"
+date: 
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, fig.width=16, fig.height=10)
+
+library(tidyverse)
+library(readxl)
+library(psych)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggbeeswarm)
+library(RColorBrewer)
+library(gridExtra)
+library(rstatix)
+library(skimr)
+library(broom) # для удобного вывода результатов регрессии
+library(ggcorrplot) # для корреляционной матрицы
+library(knitr) # для красивого вывода таблиц
+library(car)
+library(flextable)
+library(corrplot)
+library(corrr)
+library(GGally)
+library(gtsummary)
+set.seed(123)
+```
+
+1. Загрузка данных
+```{r, echo=FALSE}
+data <- read_excel("C:/Users/Алексей/Desktop/mag/statistics/biostatistics/регрессия/HW_data.xlsx", skip = 0, n_max = Inf)
+
+glimpse(data)
+str(data)
+
+
+```
+
+
+1.1Каким образом вы будете оценивать физическую активность респондентов? 
+За основу возьму PAQ605 - Vigorous work activity, считаю, что у этого показателя может быть самы выраженный эффект на уровень гликилированного гемоглобина.
+1.2 Есть ли у вас предварительные предположения относительно того, каким образом выбранный вами пока затель может быть ассоциирован с гликированным гемоглобином? 
+Активная работа влияет на уровень сахара в крови обратнопропорционально.Если человек много двигается, активно расходует энергию, соответственно уровень глик гемогл олжен быть ниже.
+
+```{r}
+
+data_cleand <- data[, c("SEQN", "RIAGENDR", "RIDAGEYR", "LBXGH", "PAQ610", "PAD615", 
+                 "PAQ605", "PAQ620", "PAQ625", "PAD630", "PAQ635", "PAQ640", 
+                 "PAD645", "PAQ650", "PAQ655", "PAD660", "BMXBMI", "DRQSDT4", 
+                 "DRQSDT7", "DRQSDT8", "DRQSDT9", "DIQ010", "DR1TTFAT")]
+
+
+```
+
+
+```{r, echo=FALSE}
+data_cleand$RIAGENDR <- factor(data_cleand$RIAGENDR, 
+                               levels = c(1, 2), 
+                               labels = c("Male", "Female"))
+```
+
+
+```{r}
+str(data_cleand)
+```
+
+```{r}
+data_cleand$PAQ650 <- factor(data_cleand$PAQ650, 
+                               levels = c(1, 2), 
+                               labels = c("Yes", "No"))
+```
+
+```{r}
+
+data_cleand$DIQ010 <- factor(data_cleand$DIQ010, 
+                               levels = c(1, 2), 
+                               labels = c("Yes", "No"))
+
+```
+
+
+```{r}
+data_cleand$DRQSDT4 <- factor(data_cleand$DRQSDT4, 
+                               levels = c(1, 2), 
+                               labels = c("Sugar free or low sugar diet", "No"))
+
+
+data_cleand$DRQSDT7 <- factor(data_cleand$DRQSDT7, 
+                               levels = c(1, 2), 
+                               labels = c("Diabetic diet", "No"))
+
+
+data_cleand$DRQSDT8 <- factor(data_cleand$DRQSDT8, 
+                               levels = c(1, 2), 
+                               labels = c("Weight gain/Muscle building diet", "No"))
+
+data_cleand$DRQSDT9 <- factor(data_cleand$DRQSDT9, 
+                               levels = c(1, 2), 
+                               labels = c("Low carbohydrate diet", "No"))
+
+data_cleand$PAQ605 <- factor(data_cleand$PAQ605, 
+                               levels = c(1, 2), 
+                               labels = c("Yes", "No"))
+
+data_cleand$PAQ620 <- factor(data_cleand$PAQ620, 
+                               levels = c(1, 2), 
+                               labels = c("Yes", "No"))
+
+
+data_cleand$PAQ635 <- factor(data_cleand$PAQ635, 
+                               levels = c(1, 2), 
+                               labels = c("Yes", "No"))
+
+
+
+
+```
+
+
+```{r}
+GH <- data_cleand
+str(GH)
+```
+
+# theme_custom
+```{r, echo=FALSE}
+theme_custom <- function() {
+  theme(
+    panel.background = element_rect(fill = "white"),
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 20),
+    legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20)
+  )
+}
+```
+
+# Эксплораторный анализ
+```{r}
+GH %>% skimr::skim()
+```
+
+# Распределение категориальных переменных
+Для категориальных переменных (RIAGENDR, PAQ605, PAQ620, PAQ635, PAQ650, DRQSDT4, DRQSDT7, DRQSDT8, DRQSDT9, DIQ010) построим столбчатые диаграммы (bar plots).
+
+```{r}
+
+# Функция для построения bar plot
+plot_bar <- function(data, var) {
+  ggplot(data, aes(x = !!sym(var))) +
+    geom_bar(fill = "steelblue", color = "black") +
+    labs(title = paste("Распределение переменной", var),
+         x = var, y = "Количество") +
+    theme_custom()
+}
+
+# Построение графиков для каждой категориальной переменной
+plot_bar(GH, "RIAGENDR")
+plot_bar(GH, "PAQ605")
+plot_bar(GH, "PAQ620")
+plot_bar(GH, "PAQ635")
+plot_bar(GH, "PAQ650")
+plot_bar(GH, "DRQSDT4")
+plot_bar(GH, "DRQSDT7")
+plot_bar(GH, "DRQSDT8")
+plot_bar(GH, "DRQSDT9")
+plot_bar(GH, "DIQ010")
+```
+
+# Зависимость LBXGH от категориальных переменных
+```{r}
+
+# Функция для построения box plot
+plot_box <- function(data, x_var) {
+  ggplot(data, aes(x = !!sym(x_var), y = LBXGH)) +
+    geom_boxplot(fill = "lightgreen", color = "black") +
+    labs(title = paste("Зависимость LBXGH от", x_var),
+         x = x_var, y = "LBXGH") +
+    theme_custom()
+}
+
+# Построение графиков для каждой категориальной переменной
+plot_box(GH, "RIAGENDR")
+plot_box(GH, "PAQ605")
+plot_box(GH, "PAQ620")
+plot_box(GH, "PAQ635")
+plot_box(GH, "PAQ650")
+plot_box(GH, "DRQSDT4")
+plot_box(GH, "DRQSDT7")
+plot_box(GH, "DRQSDT8")
+plot_box(GH, "DRQSDT9")
+plot_box(GH, "DIQ010")
+```
+
+
+```{r}
+
+str(GH)
+```
+
+# Описательные статистики с разбивкой по полу
+```{r}
+data %>%
+  select(SEQN,
+         LBXGH,
+         RIDAGEYR,
+         LBXGH,
+         PAD615,
+         PAD630,
+         PAQ640,
+         PAD645,
+         PAQ655,
+         BMXBMI,
+         DR1TTFAT,
+         RIAGENDR) %>%
+  tbl_summary(by = RIAGENDR) %>%
+  add_p()
+```
+
+
+
+# Визуализация распределения LBXGH (гликированный гемоглобин)
+
+```{r}
+# Визуализация распределения LBXGH (гликированный гемоглобин)
+ggplot(GH, aes(x = LBXGH)) + 
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black") +
+  labs(title = "Распределение гликированного гемоглобина (LBXGH)") +
+  theme_custom()
+
+# Визуализация зависимости LBXGH от физической активности (например, PAQ605)
+ggplot(GH, aes(x = PAQ605, y = LBXGH)) + 
+  geom_boxplot() +
+  labs(title = "Зависимость LBXGH от физической активности (PAQ605)")+
+  theme_custom()
+```
+
+
+
+# 4.1.1 Матрица коэффициента корреляции Пирсона 
+
+```{r}
+
+
+# Выбираем только числовые переменные
+data_numeric <- GH %>% select_if(is.numeric)
+
+# Вычисляем корреляцию для числовых переменных
+data_cor <- cor(data_numeric, use = "complete.obs")
+
+corrplot(data_cor, method = 'number')
+```
+
+# 4.1.2 Матрица коэффициента корреляции Пирсона в другом исполнении
+
+```{r}
+corrplot(data_cor, method = "color", type = "lower", 
+         addCoef.col = "grey30", diag = FALSE,
+         cl.pos = "b", tl.col = "grey10",
+         col = COL2('RdBu', 10))
+```
+
+
+#  Матрица корреляции с использованием графика сети
+
+```{r}
+
+data_cor %>% 
+  network_plot(min_cor = .0)
+```
+
+
+#Оценка общего (total) эффекта физической активности
+построим две модели:
+
+Модель 1: Зависимость LBXGH от физической активности (PAQ605) без ковариат.
+
+Модель 2: Зависимость LBXGH от физической активности с ковариатами (например, возраст RIDAGEYR, пол RIAGENDR, ИМТ BMXBMI).
+
+```{r}
+# Модель 1: Без ковариат
+model_total <- lm(LBXGH ~ PAQ605, data = GH)
+summary(model_total)
+
+# Модель 2: С ковариатами
+model_total_cov <- lm(LBXGH ~ PAQ605 + RIDAGEYR + RIAGENDR + BMXBMI, data = GH)
+summary(model_total_cov)
+
+# Диагностика моделей
+par(mfrow = c(2, 2))
+plot(model_total)  # Графики остатков для модели 1
+plot(model_total_cov)  # Графики остатков для модели 2
+```
+Модель 1
+
+Физическая активность (PAQ605) сама по себе не оказывает значимого влияния на уровень гликированного гемоглобина (LBXGH).
+
+
+Модель 2
+Физическая активность (PAQ605) не оказывает значимого влияния на LBXGH после учета ковариат
+Возраст значимо влияет на LBXGH: с увеличением возраста на 1 год уровень LBXGH увеличивается на 0,0158 единиц. стат значимо (5.19e-13).
+Пол не оказывает значимого влияния на LBXGH
+С увеличением ИМТ на 1 единицу уровень LBXGH увеличивается на 0,0328 единиц.стат значимо (2.49e-11)
+
+
+# Оценка прямого (direct) эффекта физической активности
+
+```{r}
+model_direct <- lm(LBXGH ~ PAQ605 + RIDAGEYR + RIAGENDR + BMXBMI, data = GH)
+summary(model_direct)
+
+# Диагностика модели
+par(mfrow = c(2, 2))
+plot(model_direct)
+```
+Предикторы, такие как возраст и индекс массы тела, являются статистически значимыми для предсказания LBXGH, тогда как  PAQ605 и пол, не оказывают значимого влияния.
+
+
+```{r}
+str(GH)
+```
+
+# Оценка прямого (direct) эффекта физической активности++++
+
+```{r}
+model_direct_d <- lm(LBXGH ~ PAQ605 + PAQ610 + PAD615 + PAQ620 + PAQ625 + PAD630 + PAQ635 + PAQ640 + PAD645 + PAQ650 + PAQ655 + PAD660 + RIDAGEYR  + BMXBMI, data = GH)
+summary(model_direct)
+
+# Диагностика модели
+par(mfrow = c(2, 2))
+plot(model_direct)
+```
+Примерно 12,01% дисперсии в LBXGH объясняется предикторами в этой модели.
+PAQ650: Статистически значимый (p = 0.00199), что указывает на то, что эта переменная имеет положительное влияние на LBXGH.
+PAD660: Статистически значимый (p = 0.00312), указывая на положительное влияние.
+
+
+```{r}
+sum(is.na(GH$PAQ605))
+
+
+```
+
+
+# Сравнение общего и прямого эффекта
+
+```{r}
+# Сравнение коэффициентов
+coef_total <- coef(model_total)["PAQ605Yes"]
+coef_direct <- coef(model_direct)["PAQ605Yes"]
+
+cat("Общий эффект PAQ605:", coef_total, "\n")
+cat("Прямой эффект PAQ605:", coef_direct, "\n")
+```
+
+
+#Диагностика и коррекция модели
+
+## Проверка на гетероскедастичность:
+```{r}
+library(lmtest)
+bptest(model_direct)
+```
+ p-value > 0.05,  гетероскедастичность отсутствует
+
+
+##Проверка на нормальность остатков:
+```{r}
+shapiro.test(residuals(model_direct))
+```
+остатки модели model_direct не распределены нормально
+
+## Проверка на мультиколлинеарность:
+```{r}
+library(car)
+vif(model_direct)
+```
+Все значения VIF для этих переменных находятся ниже 2, что указывает на отсутствие значительной коллинеарности между ними.
+Это означает, что каждая из этих переменных вносит уникальную информацию в модель и не вызывает проблем с мультиколлинеарностью.
+
+#Результаты и интерпретация
+## Точечная и интервальная оценка:
+```{r}
+# Точечная и интервальная оценка для модели общего эффекта
+confint(model_total)
+
+# Точечная и интервальная оценка для модели прямого эффекта
+confint(model_direct)
+```
+Доверительный интервалдля модели общего эффекта (-0.07989186, 0.2608009) включает ноль, что говорит о том, что эффект переменной PAQ605No не является статистически значимым.
+Первая модель показывает отсутствие статистической значимости для переменной PAQ605No.
+
+Вторая модель (модели прямого эффекта) показывает статистическую значимость для переменных RIDAGEYR и BMXBMI, в то время как RIAGENDRFemale и PAQ605No не показывают значимого влияния.
+
+#Проверка гипотезы об отсутствии ассоциации
+```{r}
+# Проверка гипотезы для модели общего эффекта
+anova(model_total)
+
+# Проверка гипотезы для модели прямого эффекта
+anova(model_direct)
+```
+Переменные PAQ605 и RIAGENDR не имеют статистически значимого влияния на зависимую переменную LBXGH.
+Переменные RIDAGEYR и BMXBMI являются статистически значимыми предикторами для модели, что говорит о том, что возраст и индекс массы тела оказывают существенное влияние на значения LBXGH.
+
+#Клиническая значимость
+Физическая активность (PAQ605):
+Оценка коэффициента: -0.004695 (из регрессионной модели).
+Переход от "Yes" к "No" в физической активности снижает LBXGH на 0,0047 единиц.
+Этот эффект крайне мал и не имеет клинической значимости. Обычно клинически значимым считается изменение LBXGH на 0.5% или более.
+
+Возраст (RIDAGEYR):
+Оценка коэффициента: 0.015769.
+Увеличение возраста на 1 год повышает LBXGH на 0,0158 единиц.
+
+Индекс массы тела (BMXBMI):
+Оценка коэффициента: 0,032777.
+Увеличение ИМТ на 1 единицу повышает LBXGH на 0.0328 единиц.
+
+Пол (RIAGENDR):
+Оценка коэффициента: -0.091058.
+У женщин уровень LBXGH на 0.091 единиц ниже, чем у мужчин.
+Этот эффект мал и не имеет клинической значимости.
+
+
+
+
+
